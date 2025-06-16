@@ -21,6 +21,7 @@ class Transaksi extends Model
     public function pembeli()
     {
         return $this->belongsTo(Pembeli::class, 'id_pembeli');
+        return $this->belongsTo(\App\Models\Pembeli::class);
     }
 
     public function buku()

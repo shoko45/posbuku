@@ -26,7 +26,6 @@ class TransaksiController extends Controller
             'buku' => 'required|array',
             'buku.*.id_buku' => 'required|exists:buku,id',
             'buku.*.jumlah_beli' => 'required|integer|min:1',
-            'buku.*.total_harga' => 'required|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -47,7 +46,13 @@ class TransaksiController extends Controller
                 'kontak' => $request->kontak,
             ]);
 
-            $totalHarga = array_sum(array_column($request->buku, 'total_harga'));
+            $totalHarga = 0;
+
+                foreach ($request->buku as $item) {
+                    $buku = Buku::find($item['id_buku']);
+                    $totalHarga += $buku->harga * $item['jumlah_beli'];
+                }   
+
             $transaksi = Transaksi::create([
                 'id_pembeli' => $pembeli->id,
                 'tanggal' => now(),
@@ -99,5 +104,38 @@ class TransaksiController extends Controller
               return $pdf->stream('struk-transaksi-' . $id . '.pdf');
 
 }
+
+public function destroy($id)
+{
+    DB::beginTransaction();
+
+    try {
+        // Ambil transaksi dan detailnya
+        $transaksi = Transaksi::with('detailTransaksi')->findOrFail($id);
+
+        // Kembalikan stok buku (opsional tapi bagus untuk pembatalan)
+        foreach ($transaksi->detailTransaksi as $detail) {
+            $buku = Buku::find($detail->id_buku);
+            if ($buku) {
+                $buku->stok += $detail->jumlah_beli;
+                $buku->save();
+            }
+        }
+
+        // Hapus detail transaksi dulu
+        DetailTransaksi::where('id_transaksi', $transaksi->id)->delete();
+
+        // Hapus transaksi utama
+        $transaksi->delete();
+
+        DB::commit();
+
+        return redirect()->route('transaksi.index')->with('success', 'Transaksi berhasil dihapus!');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return redirect()->back()->withErrors('Gagal menghapus transaksi: ' . $e->getMessage());
+    }
+}
+
 
 }

@@ -3,24 +3,25 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Buku;
+use App\Models\Transaksi;
 
 class DashboardController extends Controller
 {
     public function index()
-{
-    $totalBooks = 120;
-    $totalTransactions = 57;
-    $totalSales = 2150000;
+    {
+        // Total buku
+        $totalBooks = Buku::count();
 
-    $transactions = [
-        ['id' => 'TRX001', 'date' => '2025-06-01', 'customer' => 'Budi', 'total' => 50000],
-        ['id' => 'TRX002', 'date' => '2025-06-02', 'customer' => 'Sari', 'total' => 75000],
-        ['id' => 'TRX003', 'date' => '2025-06-03', 'customer' => 'Agus', 'total' => 120000],
-        ['id' => 'TRX004', 'date' => '2025-06-04', 'customer' => 'Dewi', 'total' => 90000],
-        ['id' => 'TRX005', 'date' => '2025-06-04', 'customer' => 'Rudi', 'total' => 65000],
-    ];
+        // Total transaksi
+        $totalTransactions = Transaksi::count();
 
-    return view('dashboard', compact('totalBooks', 'totalTransactions', 'totalSales', 'transactions'));
-}
+        // Total penjualan
+        $totalSales = Transaksi::sum('total_harga'); // pastikan nama field di tabel benar
 
+        // Transaksi terbaru
+        $transactions = Transaksi::with('pembeli')->latest()->take(5)->get();
+
+        return view('dashboard', compact('totalBooks', 'totalTransactions', 'totalSales', 'transactions'));
+    }
 }
